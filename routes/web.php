@@ -7,6 +7,4 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-
-
 Route::post('/generate-cover-letter', [CoverLetterController::class, 'generate']);

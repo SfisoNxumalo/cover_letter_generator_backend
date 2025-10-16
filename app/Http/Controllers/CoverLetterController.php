@@ -13,7 +13,7 @@ class CoverLetterController extends Controller
         
         $prompt = "Say hello like one";
         $response = OpenAI::chat()->create([
-            'model' => 'gpt-5',
+            'model' => 'gpt-4o-mini',
             'messages' => [
                 ['role' => 'system', 'content' => 'You are an expert HR assistant.'],
                 ['role' => 'user', 'content' => $prompt],
