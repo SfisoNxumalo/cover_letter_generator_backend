@@ -8,34 +8,29 @@ use OpenAI\Laravel\Facades\OpenAI;
 
 class CoverLetterController extends Controller
 {
+    protected PdfParserInterface $pdfParser;
+    protected AiGeneratorInterface $aiGenerator;
+
+    public function __construct(PdfParserInterface $pdfParser, AiGeneratorInterface $aiGenerator)
+    {
+        $this->pdfParser = $pdfParser;
+        $this->aiGenerator = $aiGenerator;
+    }
+
     public function generate(Request $request)
     {
-
-        $request->validate([
-        'cv' => 'required|file|mimes:pdf|max:2048',
-        'jobDescription' => 'required|string',
+        $validated = $request->validate([
+            'cv' => 'required|file|mimes:pdf|max:2048',
+            'jobDescription' => 'required|string',
         ]);
 
-        // Extract text from the uploaded PDF
+        $cvText = $this->pdfParser->extractText($request->file('cv')->getRealPath());
 
-        $parser = new Parser();
-        $pdf = $parser->parseFile($request->file('cv')->getRealPath());
-        $cvText = $pdf->getText();
+        $coverLetter = $this->aiGenerator->generateCoverLetter(
+            $cvText,
+            $validated['jobDescription']
+        );
 
-            // Generate cover letter using GPT
-            $prompt = "Write a 2-3 paragraph cover letter explaining why this CV is ideal for the given job.\n\nCV:\n{$cvText}\n\nJob Description:\n{$request->jobDescription}";
-            
-            $response = OpenAI::chat()->create([
-                'model' => 'gpt-4o-mini',
-                'messages' => [
-                ['role' => 'system', 'content' => 'You are an expert HR assistant.'],
-                ['role' => 'user', 'content' => $prompt],
-                ],
-            ]);
-
-               return response()->json([
-            'coverLetter' => trim($response->choices[0]->message->content),
-        ]);
-
+        return response()->json(['coverLetter' => $coverLetter]);
     }
 }
