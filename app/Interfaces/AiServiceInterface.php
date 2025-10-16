@@ -2,7 +2,7 @@
 
 namespace App\Interfaces;
 
-interface AiGeneratorInterface
+interface AiServiceInterface
 {
     public function generateCoverLetter(string $cvText, string $jobDescription): string;
 }
