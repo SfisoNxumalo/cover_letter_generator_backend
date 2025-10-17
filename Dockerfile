@@ -18,6 +18,17 @@ RUN apt-get update && apt-get install -y \
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
+# Set Apache DocumentRoot to Laravel public
+RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
+
+# Allow .htaccess overrides
+RUN echo '<Directory /var/www/html/public>\n\
+    Options Indexes FollowSymLinks\n\
+    AllowOverride All\n\
+    Require all granted\n\
+</Directory>' > /etc/apache2/conf-available/laravel.conf \
+    && a2enconf laravel
+
 # Copy composer from official composer image
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -28,7 +39,8 @@ COPY . .
 RUN composer install --no-dev --optimize-autoloader
 
 # Set correct permissions for Laravel
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
 # Copy example env to actual env
 RUN cp .env.example .env
