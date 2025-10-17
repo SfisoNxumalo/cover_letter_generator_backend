@@ -45,11 +45,23 @@ RUN chown -R www-data:www-data storage bootstrap/cache \
 # Copy example env to actual env
 RUN cp .env.example .env
 
+# Disable database requirement by using file-based sessions
+RUN sed -i "s/DB_CONNECTION=.*/DB_CONNECTION=sqlite/" .env \
+    && sed -i "s/DB_DATABASE=.*/DB_DATABASE=\/tmp\/laravel.sqlite/" .env \
+    && sed -i "s/SESSION_DRIVER=.*/SESSION_DRIVER=file/" .env \
+    && sed -i "s/CACHE_DRIVER=.*/CACHE_DRIVER=file/" .env \
+    && sed -i "s/QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/" .env
+
 # Generate app key
 RUN php artisan key:generate
 
 # Optimize Laravel
 RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
+
+# Ensure storage/framework/sessions exists
+RUN mkdir -p storage/framework/sessions \
+    && chown -R www-data:www-data storage/framework/sessions \
+    && chmod -R 775 storage/framework/sessions
 
 # Expose port 80
 EXPOSE 80
