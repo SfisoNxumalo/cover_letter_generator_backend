@@ -3,20 +3,22 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Smalot\PdfParser\Parser;
-use OpenAI\Laravel\Facades\OpenAI;
+use App\Services\CoverLetterService;
+
 
 class CoverLetterController extends Controller
 {
-    protected PdfParserInterface $pdfParser;
-    protected AiGeneratorInterface $aiGenerator;
+    protected CoverLetterService $coverLetterService;
 
-    public function __construct(PdfParserInterface $pdfParser, AiGeneratorInterface $aiGenerator)
+    public function __construct(CoverLetterService $coverLetterService)
     {
-        $this->pdfParser = $pdfParser;
-        $this->aiGenerator = $aiGenerator;
+        $this->coverLetterService = $coverLetterService;
     }
 
+    /**
+     * This is the controller that handles our request 
+     * and calls the service which contains the business logic
+     */
     public function generate(Request $request)
     {
         $validated = $request->validate([
@@ -24,12 +26,10 @@ class CoverLetterController extends Controller
             'jobDescription' => 'required|string',
         ]);
 
-        $cvText = $this->pdfParser->extractText($request->file('cv')->getRealPath());
+        $cvPath = $request->file('cv')->getRealPath();
+        $jobDescription = $request->jobDescription;
 
-        $coverLetter = $this->aiGenerator->generateCoverLetter(
-            $cvText,
-            $validated['jobDescription']
-        );
+        $coverLetter = $this->coverLetterService->generateCoverLetter($cvPath, $jobDescription);
 
         return response()->json(['coverLetter' => $coverLetter]);
     }

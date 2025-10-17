@@ -5,7 +5,8 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use App\Interfaces\PdfParserInterface;
 use App\Services\PdfParserService;
-use App\Interfaces\AiGeneratorInterface;
+use App\Interfaces\AiServiceInterface;
+use App\Services\OpenAiService;
 use App\Services\CoverLetterService;
 use Smalot\PdfParser\Parser;
 
@@ -17,11 +18,14 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         //DI
-        $this->app->bind(PdfParserInterface::class, function () {
-            return new PdfParserService(new Parser());
+        $this->app->bind(PdfParserInterface::class, PdfParserService::class);
+        $this->app->bind(AiServiceInterface::class, OpenAiService::class);
+        $this->app->bind(CoverLetterService::class, function ($app) {
+            return new CoverLetterService(
+                $app->make(PdfParserInterface::class),
+                $app->make(AiServiceInterface::class)
+            );
         });
-
-        $this->app->bind(AiGeneratorInterface::class, CoverLetterService::class);
     }
 
     /**
