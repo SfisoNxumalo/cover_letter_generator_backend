@@ -21,7 +21,16 @@ class CoverLetterService
     {
         $cvText = $this->parser->extractText($cvPath);
 
-        $prompt = "Write a 2-3 paragraph cover letter explaining why this CV is ideal for the given job.\n\nCV:\n{$cvText}\n\nJob Description:\n{$jobDescription}";
+        // User-level prompt: what the AI actually responds to each time
+        $prompt = <<<PROMPT
+            Write a 2-3 paragraph cover letter explaining why this CV is ideal for the given job.
+
+            CV:
+            {$cvText}
+
+            Job Description:
+            {$jobDescription}
+            PROMPT;
 
         return $this->aiGenerator->generateAiCoverLetter($prompt);
     }
