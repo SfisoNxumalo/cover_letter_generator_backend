@@ -31,10 +31,10 @@ RUN composer install --no-dev --optimize-autoloader
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Copy example env to actual env
-RUN cp .env.example .env
+# RUN cp .env.example .env
 
 # Generate app key
-RUN php artisan key:generate
+# RUN php artisan key:generate
 
 # Optimize Laravel
 RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
