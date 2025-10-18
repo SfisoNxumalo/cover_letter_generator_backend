@@ -53,7 +53,7 @@ RUN sed -i "s/DB_CONNECTION=.*/DB_CONNECTION=sqlite/" .env \
     && sed -i "s/QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/" .env
 
 # Generate app key
-# RUN php artisan key:generate
+RUN php artisan key:generate
 
 # Optimize Laravel
 RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
