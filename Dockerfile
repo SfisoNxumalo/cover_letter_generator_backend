@@ -50,63 +50,48 @@ set -e\n\
 \n\
 echo "Starting Laravel application on Render..."\n\
 \n\
-# Create .env file from Render environment variables\n\
-if [ ! -f .env ]; then\n\
-    echo "Creating .env file from environment variables..."\n\
-    cat > .env << EOF\n\
+# Create minimal .env file from Render environment variables\n\
+cat > .env << EOF\n\
 APP_NAME="${APP_NAME:-Laravel}"\n\
 APP_ENV="${APP_ENV:-production}"\n\
-APP_KEY="${APP_KEY}"\n\
+APP_KEY="${APP_KEY:-base64:$(openssl rand -base64 32)}"\n\
 APP_DEBUG="${APP_DEBUG:-false}"\n\
 APP_URL="${APP_URL:-http://localhost}"\n\
 \n\
 LOG_CHANNEL="${LOG_CHANNEL:-stack}"\n\
+LOG_DEPRECATIONS_CHANNEL=null\n\
 LOG_LEVEL="${LOG_LEVEL:-error}"\n\
 \n\
-DB_CONNECTION="${DB_CONNECTION:-sqlite}"\n\
-DB_DATABASE="${DB_DATABASE:-/tmp/laravel.sqlite}"\n\
+# No database - use array driver\n\
+DB_CONNECTION=array\n\
 \n\
-SESSION_DRIVER="${SESSION_DRIVER:-file}"\n\
-SESSION_LIFETIME="${SESSION_LIFETIME:-120}"\n\
-\n\
-CACHE_DRIVER="${CACHE_DRIVER:-file}"\n\
-QUEUE_CONNECTION="${QUEUE_CONNECTION:-sync}"\n\
+# Use array/file drivers (no database needed)\n\
+BROADCAST_DRIVER=log\n\
+CACHE_DRIVER=array\n\
+FILESYSTEM_DISK=local\n\
+QUEUE_CONNECTION=sync\n\
+SESSION_DRIVER=array\n\
+SESSION_LIFETIME=120\n\
 \n\
 # OpenAI Configuration\n\
 OPENAI_API_KEY="${OPENAI_API_KEY}"\n\
 OPENAI_ORGANIZATION="${OPENAI_ORGANIZATION:-}"\n\
 EOF\n\
-fi\n\
 \n\
-# Generate app key if not set\n\
-if [ -z "$APP_KEY" ] || ! grep -q "APP_KEY=base64:" .env 2>/dev/null; then\n\
-    echo "Generating application key..."\n\
-    php artisan key:generate --force\n\
-fi\n\
-\n\
-# Clear all caches to ensure environment variables are read\n\
-echo "Clearing caches..."\n\
-php artisan config:clear\n\
-php artisan cache:clear\n\
-php artisan view:clear\n\
-\n\
-# Create SQLite database if using SQLite\n\
-if [ "$DB_CONNECTION" = "sqlite" ]; then\n\
-    touch /tmp/laravel.sqlite\n\
-    chmod 664 /tmp/laravel.sqlite\n\
-fi\n\
+echo ".env file created successfully"\n\
 \n\
 # Set final permissions\n\
 chown -R www-data:www-data storage bootstrap/cache\n\
 chmod -R 775 storage bootstrap/cache\n\
 \n\
 echo "Laravel application ready!"\n\
+echo "OpenAI API Key configured: ${OPENAI_API_KEY:0:10}..."\n\
 \n\
 # Start Apache\n\
 exec apache2-foreground\n\
 ' > /usr/local/bin/docker-entrypoint.sh && chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Expose port (Render will map this)
+# Expose port
 EXPOSE 80
 
 # Use entrypoint script
