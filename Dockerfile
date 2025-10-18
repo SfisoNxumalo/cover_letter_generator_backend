@@ -43,7 +43,7 @@ RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
 # Copy example env to actual env
-# RUN cp .env.example .env
+RUN cp .env.example .env
 # Create entrypoint script for Render
 RUN echo '#!/bin/bash\n\
 set -e\n\
