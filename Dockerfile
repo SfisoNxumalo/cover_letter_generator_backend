@@ -43,7 +43,7 @@ RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
 # Copy example env to actual env
-# RUN cp .env.example .env
+RUN cp .env.example .env
 
 # Disable database requirement by using file-based sessions
 RUN sed -i "s/DB_CONNECTION=.*/DB_CONNECTION=sqlite/" .env \
