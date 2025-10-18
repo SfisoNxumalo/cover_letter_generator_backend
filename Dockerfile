@@ -101,4 +101,4 @@ exec apache2-foreground\n\
 EXPOSE 80
 
 # Start Apache server using our startup script
-CMD ["/usr/local/bin/start.sh"]yy
+CMD ["/usr/local/bin/start.sh"]
