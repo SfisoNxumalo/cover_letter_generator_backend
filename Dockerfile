@@ -13,19 +13,13 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     zip \
     curl && \
-    docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+    docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
 # Set Apache DocumentRoot to Laravel public
 RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
-
-# Configure Apache to show PHP errors in logs
-RUN echo 'php_flag display_errors on\n\
-php_flag display_startup_errors on\n\
-php_value error_reporting E_ALL' >> /etc/apache2/apache2.conf
 
 # Allow .htaccess overrides
 RUN echo '<Directory /var/www/html/public>\n\
@@ -44,81 +38,67 @@ COPY . .
 # Install dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# Create required directories and set permissions
-RUN mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache storage/logs \
-    && chown -R www-data:www-data storage bootstrap/cache \
+# Set correct permissions for Laravel
+RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
-# Create entrypoint script for Render
+# Copy example env to actual env
+RUN cp .env.example .env
+
+# Disable database requirement by using file-based sessions
+RUN sed -i "s/DB_CONNECTION=.*/DB_CONNECTION=sqlite/" .env \
+    && sed -i "s/DB_DATABASE=.*/DB_DATABASE=\/tmp\/laravel.sqlite/" .env \
+    && sed -i "s/SESSION_DRIVER=.*/SESSION_DRIVER=file/" .env \
+    && sed -i "s/CACHE_DRIVER=.*/CACHE_DRIVER=file/" .env \
+    && sed -i "s/QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/" .env
+
+# Generate app key
+RUN php artisan key:generate
+
+# Ensure storage/framework/sessions exists
+RUN mkdir -p storage/framework/sessions \
+    && chown -R www-data:www-data storage/framework/sessions \
+    && chmod -R 775 storage/framework/sessions
+
+# Create startup script that injects runtime environment variables
 RUN echo '#!/bin/bash\n\
-set -e\n\
 \n\
-echo "=== Starting Laravel application on Render ==="\n\
+# Inject Render environment variables into .env file\n\
+if [ ! -z "$OPENAI_API_KEY" ]; then\n\
+    # Remove existing OPENAI_API_KEY if present\n\
+    sed -i "/^OPENAI_API_KEY=/d" .env\n\
+    # Add the new one from Render\n\
+    echo "OPENAI_API_KEY=${OPENAI_API_KEY}" >> .env\n\
+    echo "✓ OpenAI API Key injected from environment"\n\
+fi\n\
 \n\
-# Create .env file\n\
-cat > .env << "ENVEOF"\n\
-APP_NAME=Laravel\n\
-APP_ENV=production\n\
-APP_DEBUG=true\n\
-APP_URL=http://localhost\n\
+if [ ! -z "$OPENAI_ORGANIZATION" ]; then\n\
+    sed -i "/^OPENAI_ORGANIZATION=/d" .env\n\
+    echo "OPENAI_ORGANIZATION=${OPENAI_ORGANIZATION}" >> .env\n\
+fi\n\
 \n\
-LOG_CHANNEL=stack\n\
-LOG_DEPRECATIONS_CHANNEL=null\n\
-LOG_LEVEL=debug\n\
-\n\
-DB_CONNECTION=sqlite\n\
-DB_DATABASE=/tmp/database.sqlite\n\
-\n\
-BROADCAST_DRIVER=log\n\
-CACHE_DRIVER=file\n\
-FILESYSTEM_DISK=local\n\
-QUEUE_CONNECTION=sync\n\
-SESSION_DRIVER=file\n\
-SESSION_LIFETIME=120\n\
-ENVEOF\n\
-\n\
-# Append environment variables from Render\n\
-echo "" >> .env\n\
-echo "# Runtime environment variables" >> .env\n\
-[ ! -z "$APP_KEY" ] && echo "APP_KEY=$APP_KEY" >> .env\n\
-[ ! -z "$OPENAI_API_KEY" ] && echo "OPENAI_API_KEY=$OPENAI_API_KEY" >> .env\n\
-[ ! -z "$OPENAI_ORGANIZATION" ] && echo "OPENAI_ORGANIZATION=$OPENAI_ORGANIZATION" >> .env\n\
-\n\
-echo "=== Environment file created ==="\n\
-\n\
-# Generate APP_KEY if not exists\n\
-if ! grep -q "^APP_KEY=base64:" .env; then\n\
-    echo "Generating APP_KEY..."\n\
-    php artisan key:generate --force\n\
+# Update APP_URL if provided\n\
+if [ ! -z "$APP_URL" ]; then\n\
+    sed -i "s|^APP_URL=.*|APP_URL=${APP_URL}|" .env\n\
 fi\n\
 \n\
 # Create SQLite database\n\
-touch /tmp/database.sqlite\n\
-chmod 666 /tmp/database.sqlite\n\
+touch /tmp/laravel.sqlite\n\
+chmod 666 /tmp/laravel.sqlite\n\
 \n\
-# Verify OpenAI key is set\n\
-if grep -q "^OPENAI_API_KEY=" .env; then\n\
-    echo "✓ OpenAI API Key is configured"\n\
-else\n\
-    echo "⚠ WARNING: OPENAI_API_KEY not found in environment!"\n\
-fi\n\
+# Clear config cache to ensure new env vars are loaded\n\
+php artisan config:clear\n\
 \n\
 # Set permissions\n\
-chown -R www-data:www-data storage bootstrap/cache /tmp/database.sqlite\n\
+chown -R www-data:www-data storage bootstrap/cache\n\
 chmod -R 775 storage bootstrap/cache\n\
 \n\
-echo "=== Laravel application ready ==="\n\
-echo "=== Logs will appear below ==="\n\
-\n\
-# Tail logs in background\n\
-tail -f storage/logs/*.log 2>/dev/null &\n\
-\n\
-# Start Apache in foreground\n\
+# Start Apache\n\
 exec apache2-foreground\n\
-' > /usr/local/bin/docker-entrypoint.sh && chmod +x /usr/local/bin/docker-entrypoint.sh
+' > /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
 
-# Expose port
+# Expose port 80
 EXPOSE 80
 
-# Use entrypoint script
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+# Start Apache server using our startup script
+CMD ["/usr/local/bin/start.sh"]yy
