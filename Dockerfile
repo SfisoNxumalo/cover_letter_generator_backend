@@ -58,8 +58,6 @@ RUN php artisan key:generate
 # Optimize Laravel
 RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
 
-RUN --mount=type=secret,id=_env,dst=/etc/secrets/.env cat /etc/secrets/.env
-
 # Ensure storage/framework/sessions exists
 RUN mkdir -p storage/framework/sessions \
     && chown -R www-data:www-data storage/framework/sessions \
